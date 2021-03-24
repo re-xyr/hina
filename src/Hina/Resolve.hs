@@ -15,7 +15,7 @@ import           Hina.Concrete              (Arg (Arg),
                                              ExprUniv (ExprUniv),
                                              ExprVar (ExprVar), Param (Param),
                                              Stmt (SVar), StmtVar (StmtVar))
-import           Hina.Mapping               (setCmVar)
+import           Hina.Mapping               (setConcVar)
 import           Hina.Ref                   (Name, Ref, freshBind, freshVar)
 import           Hina.Resolve.Context       (BindContext (BindContext),
                                              ResolveContext (RCBind, RCRoot),
@@ -76,5 +76,5 @@ resolveStmt stmt = case stmt of
     ctx <- get
     body' <- runReader (RCRoot ctx) $ resolveExpr body
     let stmt' = StmtVar varRef typ' body'
-    setCmVar varRef stmt'
+    setConcVar varRef stmt'
     pure $ SVar stmt'

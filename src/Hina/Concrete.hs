@@ -1,14 +1,6 @@
 module Hina.Concrete where
 
-import           Hina.Ref (Name, Ref, RefBind, RefVar)
-
-type family BindId a where
-  BindId Ref = RefBind
-  BindId Name = Name
-
-type family VarId a where
-  VarId Ref = RefVar
-  VarId Name = Name
+import           Hina.Ref (BindId, Name, Ref, RefBind, RefVar, VarId)
 
 data Expr id
   = EApp (ExprApp id)

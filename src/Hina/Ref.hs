@@ -18,10 +18,16 @@ data RefVar = RefVar { rName :: Name, rUid :: Uid }
 type Name = T.Text
 type Uid = Int
 
+type family BindId a where
+  BindId Ref = RefBind
+  BindId Name = Name
+
+type family VarId a where
+  VarId Ref = RefVar
+  VarId Name = Name
+
 freshBind :: Member Fresh m => Name -> Eff m RefBind
 freshBind nm = RefBind nm <$> fresh
 
 freshVar :: Member Fresh m => Name -> Eff m RefVar
 freshVar nm = RefVar nm <$> fresh
-
-
