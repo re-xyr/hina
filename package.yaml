@@ -1,0 +1,62 @@
+name:                hina
+version:             0.1.0.0
+github:              "re-xyr/hina"
+license:             GPL-3
+author:              "Xy Ren"
+maintainer:          "xy.r@outlook.com"
+copyright:           "2021 Xy Ren"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/re-xyr/hina#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- containers
+- freer-simple
+- text
+- unordered-containers
+
+library:
+  source-dirs: src
+
+executables:
+  hina-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - hina
+
+tests:
+  hina-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - hina
+
+default-extensions:
+  - BlockArguments
+  - ConstraintKinds
+  - DataKinds
+  - DuplicateRecordFields
+  - FlexibleContexts
+  - LambdaCase
+  - OverloadedStrings
+  - TypeFamilies
