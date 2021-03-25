@@ -1,16 +1,16 @@
 module Hina.Core.Substitute where
 
-import qualified Data.Map.Strict as Map
-import           Hina.Core       (Arg (Arg), Param (Param),
-                                  Term (TApp, TBind, TCallVar, TLam, TPi, TProj, TSigma, TTup, TUniv),
-                                  TermApp (TermApp), TermBind (TermBind),
-                                  TermCallVar (TermCallVar), TermLam (TermLam),
-                                  TermPi (TermPi), TermProj (TermProj),
-                                  TermSigma (TermSigma), TermTup (TermTup),
-                                  TermUniv (TermUniv))
-import           Hina.Ref        (RefBind)
+import qualified Data.IntMap.Strict as Map
+import           Hina.Core          (Arg (Arg), Param (Param),
+                                     Term (TApp, TBind, TCallVar, TLam, TPi, TProj, TSigma, TTup, TUniv),
+                                     TermApp (TermApp), TermBind (TermBind),
+                                     TermCallVar (TermCallVar),
+                                     TermLam (TermLam), TermPi (TermPi),
+                                     TermProj (TermProj), TermSigma (TermSigma),
+                                     TermTup (TermTup), TermUniv (TermUniv))
+import           Hina.Ref           (RefBind (rUid))
 
-substAll :: Map.Map RefBind Term -> Term -> Term
+substAll :: Map.IntMap Term -> Term -> Term
 substAll mapping term = case term of
   TApp (TermApp fn arg) ->
     TApp (TermApp (substAll mapping fn) (substAllArg mapping arg))
@@ -26,17 +26,17 @@ substAll mapping term = case term of
     TProj (TermProj (substAll mapping tup) left)
   TUniv TermUniv ->
     TUniv TermUniv
-  TBind (TermBind ref) -> case Map.lookup ref mapping of
+  TBind (TermBind ref) -> case Map.lookup (rUid ref) mapping of
     Just x  -> x
     Nothing -> TBind (TermBind ref)
   TCallVar (TermCallVar ref) ->
     TCallVar (TermCallVar ref)
 
-substAllArg :: Map.Map RefBind Term -> Arg -> Arg
+substAllArg :: Map.IntMap Term -> Arg -> Arg
 substAllArg mapping (Arg term) = Arg (substAll mapping term)
 
-substAllParam :: Map.Map RefBind Term -> Param -> Param
+substAllParam :: Map.IntMap Term -> Param -> Param
 substAllParam mapping (Param bind typ) = Param bind (substAll mapping typ)
 
 subst :: RefBind -> Term -> Term -> Term
-subst r t = substAll (Map.singleton r t)
+subst r t = substAll (Map.singleton (rUid r) t)

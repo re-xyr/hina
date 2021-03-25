@@ -4,7 +4,7 @@ import           Control.Monad             (when)
 import           Control.Monad.Freer       (Eff, Member, Members)
 import           Control.Monad.Freer.Error (Error, runError, throwError)
 import           Control.Monad.Freer.State (State, evalState, get, modify)
-import qualified Data.Map.Strict           as Map
+import qualified Data.IntMap.Strict        as Map
 import           Data.Maybe                (fromMaybe)
 import           Hina.Core                 (Arg (Arg), Param (Param),
                                             Term (TApp, TBind, TPi, TProj, TSigma, TUniv),
@@ -16,22 +16,22 @@ import           Hina.Core                 (Arg (Arg), Param (Param),
                                             TermUniv (TermUniv))
 import           Hina.Core.Normalize       (normalizeToWhnf)
 import           Hina.Core.Substitute      (subst)
-import           Hina.Ref                  (RefBind (rName), freshBind)
+import           Hina.Ref                  (RefBind (rName, rUid), freshBind)
 import           Hina.Tyck.Context         (TyckEff, getLocal, withLocal)
 
 type UnifyEff m = (TyckEff m, Members '[State LocalCorrespond, Error ()] m)
 
-type LocalCorrespond = Map.Map RefBind RefBind
+type LocalCorrespond = Map.IntMap RefBind
 
 withCorrespond :: Member (State LocalCorrespond) m => RefBind -> RefBind -> Eff m a -> Eff m a
 withCorrespond x y m = do
-  modify (Map.insert y x . Map.insert x y)
+  modify (Map.insert (rUid y) x . Map.insert (rUid x) y)
   res <- m
-  modify @LocalCorrespond (Map.delete x . Map.delete y)
+  modify @LocalCorrespond (Map.delete (rUid x) . Map.delete (rUid y))
   pure res
 
 getCorrespond :: Member (State LocalCorrespond) m => RefBind -> Eff m RefBind
-getCorrespond r = fromMaybe r . Map.lookup r <$> get
+getCorrespond r = fromMaybe r . Map.lookup (rUid r) <$> get
 
 unify :: TyckEff m => Term -> Term -> Term -> Eff m Bool
 unify ty x y = evalState @LocalCorrespond Map.empty do
