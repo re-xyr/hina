@@ -8,18 +8,18 @@ import           Hina.Core                  (Term)
 import           Hina.Mapping               (CoreMapping)
 import           Hina.Ref                   (FreshEff, RefBind (rUid))
 
-type LocalCtx = Map.IntMap Term
+newtype LocalCtx = LocalCtx { unLocalCtx :: Map.IntMap Term }
 
 type TyckEff m = (Members '[Reader CoreMapping, State LocalCtx] m, FreshEff m)
 
 withLocal :: Member (State LocalCtx) m => RefBind -> Term -> Eff m a -> Eff m a
 withLocal r t m = do
-  modify (Map.insert (rUid r) t)
+  modify (LocalCtx . Map.insert (rUid r) t . unLocalCtx)
   res <- m
-  modify @LocalCtx (Map.delete (rUid r))
+  modify (LocalCtx . Map.delete (rUid r) . unLocalCtx)
   pure res
 
 getLocal :: Member (State LocalCtx) m => RefBind -> Eff m Term
 getLocal r = do
-  ctx <- get
+  ctx <- unLocalCtx <$> get
   pure $ ctx Map.! rUid r

@@ -19,23 +19,25 @@ import           Hina.Core.Substitute      (subst)
 import           Hina.Ref                  (RefBind (rName, rUid), freshBind)
 import           Hina.Tyck.Context         (TyckEff, getLocal, withLocal)
 
-type UnifyEff m = (TyckEff m, Members '[State LocalCorrespond, Error ()] m)
+data UnifyFailure = UnifyFailure
 
-type LocalCorrespond = Map.IntMap RefBind
+type UnifyEff m = (TyckEff m, Members '[State LocalCorrespond, Error UnifyFailure] m)
+
+newtype LocalCorrespond = LocalCorrespond { unLocalCorrespond :: Map.IntMap RefBind }
 
 withCorrespond :: Member (State LocalCorrespond) m => RefBind -> RefBind -> Eff m a -> Eff m a
 withCorrespond x y m = do
-  modify (Map.insert (rUid y) x . Map.insert (rUid x) y)
+  modify (LocalCorrespond . Map.insert (rUid y) x . Map.insert (rUid x) y . unLocalCorrespond)
   res <- m
-  modify @LocalCorrespond (Map.delete (rUid x) . Map.delete (rUid y))
+  modify (LocalCorrespond . Map.delete (rUid x) . Map.delete (rUid y) . unLocalCorrespond)
   pure res
 
 getCorrespond :: Member (State LocalCorrespond) m => RefBind -> Eff m RefBind
-getCorrespond r = fromMaybe r . Map.lookup (rUid r) <$> get
+getCorrespond r = fromMaybe r . Map.lookup (rUid r) . unLocalCorrespond <$> get
 
 unify :: TyckEff m => Term -> Term -> Term -> Eff m Bool
-unify ty x y = evalState @LocalCorrespond Map.empty do
-  res <- runError @() $ unify' ty x y
+unify ty x y = evalState (LocalCorrespond Map.empty) do
+  res <- runError @UnifyFailure $ unify' ty x y
   pure case res of
     Left _  -> False
     Right _ -> True
@@ -80,7 +82,7 @@ unifyNeutral x y = case (x, y) of
         pure $ subst tRef xArg tBody
       _ -> error "Impossible"
   (TProj (TermProj xTup xIsLeft), TProj (TermProj yTup yIsLeft)) -> do
-    when (xIsLeft /= yIsLeft) $ throwError ()
+    when (xIsLeft /= yIsLeft) $ throwError UnifyFailure
     tupTy <- unifyNeutral xTup yTup >>= normalizeToWhnf
     pure case tupTy of
       TPi (TermPi (Param tRef tTyp) tBody) -> if xIsLeft
@@ -89,6 +91,6 @@ unifyNeutral x y = case (x, y) of
       _ -> error "Impossible"
   (TBind (TermBind xRef), TBind (TermBind yRef)) -> do
     yRef' <- getCorrespond yRef
-    when (xRef /= yRef') $ throwError ()
+    when (xRef /= yRef') $ throwError UnifyFailure
     getLocal xRef
-  _ -> throwError ()
+  _ -> throwError UnifyFailure
