@@ -59,4 +59,6 @@ default-extensions:
   - FlexibleContexts
   - LambdaCase
   - OverloadedStrings
+  - TypeApplications
   - TypeFamilies
+  
