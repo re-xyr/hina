@@ -10,6 +10,8 @@ data Ref
   | RVar RefVar
   deriving (Show, Ord, Eq)
 
+type FreshEff m = Member Fresh m
+
 data RefBind = RefBind { rName :: Name, rUid :: Uid }
   deriving (Show, Ord, Eq)
 data RefVar = RefVar { rName :: Name, rUid :: Uid }
@@ -26,8 +28,8 @@ type family VarId a where
   VarId Ref = RefVar
   VarId Name = Name
 
-freshBind :: Member Fresh m => Name -> Eff m RefBind
+freshBind :: FreshEff m => Name -> Eff m RefBind
 freshBind nm = RefBind nm <$> fresh
 
-freshVar :: Member Fresh m => Name -> Eff m RefVar
+freshVar :: FreshEff m => Name -> Eff m RefVar
 freshVar nm = RefVar nm <$> fresh

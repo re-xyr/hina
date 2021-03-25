@@ -1,19 +1,20 @@
 module Hina.Core.Normalize where
 
-import           Control.Monad.Freer       (Eff, Member)
-import           Control.Monad.Freer.State (State)
-import           Data.Maybe                (isJust)
-import           Hina.Core                 (Param (Param),
-                                            Term (TApp, TBind, TCallVar, TLam, TPi, TProj, TSigma, TTup, TUniv),
-                                            TermApp (TermApp),
-                                            TermCallVar (TermCallVar),
-                                            TermLam (TermLam),
-                                            TermProj (TermProj),
-                                            TermTup (TermTup), aTerm, dBody)
-import           Hina.Core.Substitute      (subst)
-import           Hina.Mapping              (CoreMapping, getCoreVar)
+import           Control.Monad.Freer        (Eff, Member)
+import           Control.Monad.Freer.Reader (Reader)
+import           Control.Monad.Freer.State  (State)
+import           Data.Maybe                 (isJust)
+import           Hina.Core                  (Param (Param),
+                                             Term (TApp, TBind, TCallVar, TLam, TPi, TProj, TSigma, TTup, TUniv),
+                                             TermApp (TermApp),
+                                             TermCallVar (TermCallVar),
+                                             TermLam (TermLam),
+                                             TermProj (TermProj),
+                                             TermTup (TermTup), aTerm, dBody)
+import           Hina.Core.Substitute       (subst)
+import           Hina.Mapping               (CoreMapping, askCoreVar)
 
-isWhnf :: Member (State CoreMapping) m => Term -> Eff m Bool
+isWhnf :: Member (Reader CoreMapping) m => Term -> Eff m Bool
 isWhnf term = case term of
   TApp (TermApp fn _) -> case fn of
     TLam _ -> pure True
@@ -28,10 +29,10 @@ isWhnf term = case term of
   TUniv _ -> pure True
   TBind _ -> pure True
   TCallVar (TermCallVar ref) -> do
-    coreVar <- getCoreVar ref
+    coreVar <- askCoreVar ref
     pure $ isJust (dBody coreVar)
 
-normalizeToWhnf :: Member (State CoreMapping) m => Term -> Eff m Term
+normalizeToWhnf :: Member (Reader CoreMapping) m => Term -> Eff m Term
 normalizeToWhnf term = case term of
   TApp (TermApp fn arg) -> case fn of
     TLam (TermLam (Param bind _) body) ->
@@ -56,7 +57,7 @@ normalizeToWhnf term = case term of
   TUniv _ -> pure term
   TBind _ -> pure term
   TCallVar (TermCallVar ref) -> do
-    coreVar <- getCoreVar ref
+    coreVar <- askCoreVar ref
     case dBody coreVar of
       Nothing -> pure term
       Just x  -> pure x

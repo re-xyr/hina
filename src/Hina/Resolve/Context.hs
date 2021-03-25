@@ -1,18 +1,16 @@
 module Hina.Resolve.Context where
 
 import           Control.Monad              (when)
-import           Control.Monad.Freer        (Eff, Member, Members, interpret,
-                                             type (~>))
+import           Control.Monad.Freer        (Eff, Members)
 import           Control.Monad.Freer.Error  (Error, throwError)
-import           Control.Monad.Freer.Fresh  (Fresh)
 import           Control.Monad.Freer.Reader (Reader, ask, runReader)
 import           Control.Monad.Freer.State  (State, get, put)
 import           Control.Monad.Freer.TH     (makeEffect)
 import qualified Data.HashMap.Strict        as Map
 import           Data.Maybe                 (isJust)
 import           Hina.Mapping               (ConcreteMapping)
-import           Hina.Ref                   (Name, Ref (RBind, RVar), RefBind,
-                                             RefVar)
+import           Hina.Ref                   (FreshEff, Name, Ref (RBind, RVar),
+                                             RefBind, RefVar)
 
 data ResolveContext
   = RCRoot RootContext
@@ -26,9 +24,9 @@ data BindContext = BindContext
 data RootContext = RootContext
   { rcGlobals :: Map.HashMap Name RefVar }
 
-type ResolveEff m = Members '[Reader ResolveContext, Error (), Fresh] m
+type ResolveEff m = (Members '[Reader ResolveContext, Error ()] m, FreshEff m)
 
-type ResolveGlobalEff m = Members '[State RootContext, State ConcreteMapping, Error (), Fresh] m
+type ResolveGlobalEff m = (Members '[State RootContext, State ConcreteMapping, Error ()] m, FreshEff m)
 
 getParent :: ResolveEff m => Eff m (Maybe ResolveContext)
 getParent = do

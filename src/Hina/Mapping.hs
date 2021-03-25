@@ -1,11 +1,12 @@
 module Hina.Mapping where
 
-import           Control.Monad.Freer       (Eff, Member)
-import           Control.Monad.Freer.State (State, get, modify)
-import qualified Data.Map.Strict           as Map
-import           Hina.Concrete             (StmtVar)
-import           Hina.Core                 (DefVar)
-import           Hina.Ref                  (Ref, RefVar)
+import           Control.Monad.Freer        (Eff, Member, raise)
+import           Control.Monad.Freer.Reader (Reader, ask, runReader)
+import           Control.Monad.Freer.State  (State, get, modify)
+import qualified Data.Map.Strict            as Map
+import           Hina.Concrete              (StmtVar)
+import           Hina.Core                  (DefVar)
+import           Hina.Ref                   (Ref, RefVar)
 
 data ConcreteMapping = ConcreteMapping
   { concVars :: Map.Map RefVar (StmtVar Ref) }
@@ -18,6 +19,11 @@ getConcVar ref = do
   mapping <- get
   pure (concVars mapping Map.! ref)
 
+askConcVar :: Member (Reader ConcreteMapping) m => RefVar -> Eff m (StmtVar Ref)
+askConcVar ref = do
+  mapping <- ask
+  pure (concVars mapping Map.! ref)
+
 data CoreMapping = CoreMapping
   { coreVars :: Map.Map RefVar DefVar }
 
@@ -27,4 +33,9 @@ setCoreVar ref def = modify \cm -> cm { coreVars = Map.insert ref def (coreVars 
 getCoreVar :: Member (State CoreMapping) m => RefVar -> Eff m DefVar
 getCoreVar ref = do
   mapping <- get
+  pure (coreVars mapping Map.! ref)
+
+askCoreVar :: Member (Reader CoreMapping) m => RefVar -> Eff m DefVar
+askCoreVar ref = do
+  mapping <- ask
   pure (coreVars mapping Map.! ref)
