@@ -25,7 +25,8 @@ import qualified Hina.Core                 as T
 import           Hina.Core.Normalize       (normalizeToWhnf)
 import           Hina.Core.Substitute      (subst)
 import           Hina.Mapping              (askCoreVar)
-import           Hina.Ref                  (Ref (RBind, RVar), freshBind)
+import           Hina.Ref                  (Ref (RBind, RGlobal),
+                                            RefGlobal (RGVar), freshBind)
 import           Hina.Tyck.Context         (TyckEff, getLocal, withLocal)
 import           Hina.Tyck.Unify           (unify)
 
@@ -90,7 +91,7 @@ inferExpr expr = case expr of
   EVar (ExprVar (RBind bnd)) -> do
     bndTy <- getLocal bnd
     pure (TBind $ TermBind bnd, bndTy)
-  EVar (ExprVar (RVar var)) -> do
+  EVar (ExprVar (RGlobal (RGVar var))) -> do
     varDef <- askCoreVar var
     pure (TCallVar $ TermCallVar var, dTyp varDef)
   _ -> throwError ()

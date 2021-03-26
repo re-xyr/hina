@@ -1,6 +1,6 @@
 module Hina.Concrete where
 
-import           Hina.Ref (BindId, Name, Ref, RefBind, RefVar, VarId)
+import           Hina.Ref (BindId, Name, Ref, VarId)
 
 data Expr id
   = EApp (ExprApp id)

@@ -9,8 +9,9 @@ import           Control.Monad.Freer.TH     (makeEffect)
 import qualified Data.HashMap.Strict        as Map
 import           Data.Maybe                 (isJust)
 import           Hina.Mapping               (ConcreteMapping)
-import           Hina.Ref                   (FreshEff, Name, Ref (RBind, RVar),
-                                             RefBind, RefVar)
+import           Hina.Ref                   (FreshEff, Name,
+                                             Ref (RBind, RGlobal), RefBind,
+                                             RefGlobal (RGVar), RefGlobalVar)
 
 data ResolveContext
   = RCRoot RootContext
@@ -22,7 +23,7 @@ data BindContext = BindContext
   , rcBindRef  :: RefBind }
 
 data RootContext = RootContext
-  { rcGlobals :: Map.HashMap Name RefVar }
+  { rcGlobals :: Map.HashMap Name RefGlobalVar }
 
 type ResolveEff m = (Members '[Reader ResolveContext, Error ()] m, FreshEff m)
 
@@ -44,7 +45,7 @@ getUnqualifiedLocallyMaybe nm = do
       else pure Nothing
     RCRoot ctx -> case Map.lookup nm (rcGlobals ctx) of
       Nothing    -> pure Nothing
-      Just entry -> pure $ Just $ RVar entry
+      Just entry -> pure $ Just $ RGlobal $ RGVar entry
 
 getUnqualifiedMaybe :: ResolveEff m => Name -> Eff m (Maybe Ref)
 getUnqualifiedMaybe nm = do
@@ -63,13 +64,13 @@ getUnqualified nm = do
     Nothing  -> throwError ()
     Just ref -> pure ref
 
-addGlobal :: ResolveGlobalEff m => Name -> RefVar -> Eff m ()
+addGlobal :: ResolveGlobalEff m => Name -> RefGlobalVar -> Eff m ()
 addGlobal nm ref = do
   ctx <- get
   when (isJust (Map.lookup nm (rcGlobals ctx))) (throwError ())
   put ctx { rcGlobals = Map.insert nm ref (rcGlobals ctx) }
 
-getGlobal :: ResolveGlobalEff m => Name -> Eff m RefVar
+getGlobal :: ResolveGlobalEff m => Name -> Eff m RefGlobalVar
 getGlobal nm = do
   ctx <- get
   pure $ rcGlobals ctx Map.! nm

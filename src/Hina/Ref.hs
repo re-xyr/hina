@@ -7,14 +7,19 @@ import qualified Data.Text                 as T
 
 data Ref
   = RBind RefBind
-  | RVar RefVar
+  | RGlobal RefGlobal
   deriving (Show, Ord, Eq)
 
 type FreshEff m = Member Fresh m
 
 data RefBind = RefBind { rName :: Name, rUid :: Uid }
   deriving (Show, Ord, Eq)
-data RefVar = RefVar { rName :: Name, rUid :: Uid }
+
+data RefGlobal =
+  RGVar RefGlobalVar
+  deriving (Show, Ord, Eq)
+
+data RefGlobalVar = RefGlobalVar { rName :: Name, rUid :: Uid }
   deriving (Show, Ord, Eq)
 
 type Name = T.Text
@@ -25,11 +30,11 @@ type family BindId a where
   BindId Name = Name
 
 type family VarId a where
-  VarId Ref = RefVar
+  VarId Ref = RefGlobalVar
   VarId Name = Name
 
 freshBind :: FreshEff m => Name -> Eff m RefBind
 freshBind nm = RefBind nm <$> fresh
 
-freshVar :: FreshEff m => Name -> Eff m RefVar
-freshVar nm = RefVar nm <$> fresh
+freshVar :: FreshEff m => Name -> Eff m RefGlobalVar
+freshVar nm = RefGlobalVar nm <$> fresh
