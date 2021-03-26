@@ -68,3 +68,8 @@ addGlobal nm ref = do
   ctx <- get
   when (isJust (Map.lookup nm (rcGlobals ctx))) (throwError ())
   put ctx { rcGlobals = Map.insert nm ref (rcGlobals ctx) }
+
+getGlobal :: ResolveGlobalEff m => Name -> Eff m RefVar
+getGlobal nm = do
+  ctx <- get
+  pure $ rcGlobals ctx Map.! nm

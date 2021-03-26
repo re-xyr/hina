@@ -20,7 +20,8 @@ import           Hina.Ref                   (Name, Ref, freshBind, freshVar)
 import           Hina.Resolve.Context       (BindContext (BindContext),
                                              ResolveContext (RCBind, RCRoot),
                                              ResolveEff, ResolveGlobalEff,
-                                             addGlobal, getUnqualified)
+                                             addGlobal, getGlobal,
+                                             getUnqualified)
 
 resolveExpr :: ResolveEff m => Expr Name -> Eff m (Expr Ref)
 resolveExpr expr = case expr of
@@ -68,15 +69,19 @@ resolveParam (Param ref typ) f = do
   let boundCtx = BindContext ctx ref localRef
   local (const $ RCBind boundCtx) $ f $ Param localRef typ'
 
+preResolveStmt :: ResolveGlobalEff m => Stmt Name -> Eff m ()
+preResolveStmt stmt = case stmt of
+  SVar (StmtVar ref typ body) -> do
+    varRef <- freshVar ref
+    addGlobal ref varRef
+
 resolveStmt :: ResolveGlobalEff m => Stmt Name -> Eff m (Stmt Ref)
 resolveStmt stmt = case stmt of
   SVar (StmtVar ref typ body) -> do
     ctx <- get
-    varRef <- freshVar ref
     typ' <- runReader (RCRoot ctx) $ resolveExpr typ
-    addGlobal ref varRef
-    ctx <- get
     body' <- runReader (RCRoot ctx) $ resolveExpr body
+    varRef <- getGlobal ref
     let stmt' = StmtVar varRef typ' body'
     setConcVar varRef stmt'
     pure $ SVar stmt'
