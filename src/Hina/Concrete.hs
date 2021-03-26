@@ -13,7 +13,7 @@ data Expr id
   | EVar (ExprVar id)
 
 data ExprApp id = ExprApp { eFn :: Expr id, eArg :: Arg id }
-data ExprLam id = ExprLam { ePar :: Param id, eBody :: Expr id }
+data ExprLam id = ExprLam { ePar :: BindId id, eBody :: Expr id }
 data ExprPi id = ExprPi { ePar :: Param id, eBody :: Expr id }
 data ExprTup id = ExprTup { eLeft :: Expr id, eRight :: Expr id }
 data ExprSigma id = ExprSigma { ePar :: Param id, eBody :: Expr id }

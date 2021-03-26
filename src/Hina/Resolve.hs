@@ -28,10 +28,12 @@ resolveExpr expr = case expr of
     fn' <- resolveExpr fn
     arg' <- resolveArg arg
     pure $ EApp $ ExprApp fn' arg'
-  ELam (ExprLam param body) ->
-    resolveParam param \param' -> do
+  ELam (ExprLam param body) -> do
+    ctx <- ask
+    localRef <- freshBind param
+    local (const $ RCBind $ BindContext ctx param localRef) do
       body' <- resolveExpr body
-      pure $ ELam $ ExprLam param' body'
+      pure $ ELam $ ExprLam localRef body'
   EPi (ExprPi param body) ->
     resolveParam param \param' -> do
       body' <- resolveExpr body
@@ -62,8 +64,8 @@ resolveParam :: ResolveEff m => Param Name -> (Param Ref -> Eff m a) -> Eff m a
 resolveParam (Param ref typ) f = do
   ctx <- ask
   localRef <- freshBind ref
-  let boundCtx = BindContext ctx ref localRef
   typ' <- resolveExpr typ
+  let boundCtx = BindContext ctx ref localRef
   local (const $ RCBind boundCtx) $ f $ Param localRef typ'
 
 resolveStmt :: ResolveGlobalEff m => Stmt Name -> Eff m (Stmt Ref)

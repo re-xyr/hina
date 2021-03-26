@@ -15,7 +15,7 @@ substAll mapping term = case term of
   TApp (TermApp fn arg) ->
     TApp (TermApp (substAll mapping fn) (substAllArg mapping arg))
   TLam (TermLam param body) ->
-    TLam (TermLam (substAllParam mapping param) (substAll mapping body))
+    TLam (TermLam param (substAll mapping body))
   TPi (TermPi param body) ->
     TPi (TermPi (substAllParam mapping param) (substAll mapping body))
   TTup (TermTup left right) ->

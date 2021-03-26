@@ -35,7 +35,7 @@ isWhnf term = case term of
 normalizeToWhnf :: Member (Reader CoreMapping) m => Term -> Eff m Term
 normalizeToWhnf term = case term of
   TApp (TermApp fn arg) -> case fn of
-    TLam (TermLam (Param bind _) body) ->
+    TLam (TermLam bind body) ->
       normalizeToWhnf $ subst bind (aTerm arg) body
     _ -> do
       fnIsWhnf <- isWhnf fn
