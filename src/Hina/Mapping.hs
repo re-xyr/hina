@@ -1,12 +1,12 @@
 module Hina.Mapping where
 
-import           Control.Monad.Freer        (Eff, Member, raise)
-import           Control.Monad.Freer.Reader (Reader, ask, runReader)
+import           Control.Monad.Freer        (Eff, Member)
+import           Control.Monad.Freer.Reader (Reader, ask)
 import           Control.Monad.Freer.State  (State, get, modify)
 import qualified Data.IntMap.Strict         as Map
 import           Hina.Concrete              (StmtVar)
 import           Hina.Core                  (DefVar)
-import           Hina.Ref                   (Ref, RefGlobalVar (rUid), Uid)
+import           Hina.Ref                   (Ref, RefGlobalVar (rUid))
 
 data ConcreteMapping = ConcreteMapping
   { concVars :: Map.IntMap (StmtVar Ref) }

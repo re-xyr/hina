@@ -34,7 +34,7 @@ checkExpr :: TyckEff m => Expr Ref -> Term -> Eff m Term
 checkExpr expr ty = do
   ty' <- normalizeToWhnf ty
   case (expr, ty') of
-    (ELam (ExprLam ref body), TPi (TermPi (T.Param tRef tTyp) tBody)) -> do
+    (ELam (ExprLam ref body), TPi (TermPi (T.Param tRef tTyp) tBody)) -> withLocal ref tTyp do
       body' <- checkExpr body (subst tRef (TBind $ TermBind ref) tBody)
       pure $ TLam $ TermLam ref body'
     (ETup (ExprTup left right), TSigma (TermSigma (T.Param tRef tTyp) tBody)) -> do
@@ -87,6 +87,7 @@ inferExpr expr = case expr of
       TSigma (TermSigma (T.Param tRef tTyp) tBody) -> if isLeft
         then pure (TProj $ TermProj tup' True, tTyp)
         else pure (TProj $ TermProj tup' False, subst tRef (TProj $ TermProj tup' True) tBody)
+      _ -> throwError ()
   EUniv ExprUniv -> pure (TUniv TermUniv, TUniv TermUniv)
   EVar (ExprVar (RBind bnd)) -> do
     bndTy <- getLocal bnd

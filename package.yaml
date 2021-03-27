@@ -8,7 +8,6 @@ copyright:           "2021 Xy Ren"
 
 extra-source-files:
 - README.md
-- ChangeLog.md
 
 # Metadata used when publishing your package
 # synopsis:            Short description of your package
@@ -25,6 +24,9 @@ dependencies:
 - freer-simple
 - text
 - unordered-containers
+
+ghc-options:
+  - -Wall
 
 library:
   source-dirs: src

@@ -2,7 +2,6 @@ module Hina.Ref where
 
 import           Control.Monad.Freer       (Eff, Member)
 import           Control.Monad.Freer.Fresh (Fresh, fresh)
-import qualified Data.HashMap.Strict       as Map
 import qualified Data.Text                 as T
 
 data Ref

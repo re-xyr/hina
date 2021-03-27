@@ -2,10 +2,8 @@ module Hina.Core.Normalize where
 
 import           Control.Monad.Freer        (Eff, Member)
 import           Control.Monad.Freer.Reader (Reader)
-import           Control.Monad.Freer.State  (State)
 import           Data.Maybe                 (isJust)
-import           Hina.Core                  (Param (Param),
-                                             Term (TApp, TBind, TCallVar, TLam, TPi, TProj, TSigma, TTup, TUniv),
+import           Hina.Core                  (Term (TApp, TBind, TCallVar, TLam, TPi, TProj, TSigma, TTup, TUniv),
                                              TermApp (TermApp),
                                              TermCallVar (TermCallVar),
                                              TermLam (TermLam),
