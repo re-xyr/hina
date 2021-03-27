@@ -1,27 +1,19 @@
 module Hina.Resolve where
 
-import           Control.Monad.Freer        (Eff)
-import           Control.Monad.Freer.Reader (ask, local, runReader)
-import           Control.Monad.Freer.State  (get)
-import qualified Data.HashMap.Strict        as Map
-import           Data.Traversable           (for)
-import           Hina.Concrete              (Arg (Arg),
-                                             Expr (EApp, ELam, EPi, EProj, ESigma, ETup, EUniv, EVar),
-                                             ExprApp (ExprApp),
-                                             ExprLam (ExprLam), ExprPi (ExprPi),
-                                             ExprProj (ExprProj),
-                                             ExprSigma (ExprSigma),
-                                             ExprTup (ExprTup),
-                                             ExprUniv (ExprUniv),
-                                             ExprVar (ExprVar), Param (Param),
-                                             Stmt (SVar), StmtVar (StmtVar))
-import           Hina.Mapping               (setConcVar)
-import           Hina.Ref                   (Name, Ref, freshBind, freshVar)
-import           Hina.Resolve.Context       (BindContext (BindContext),
-                                             ResolveContext (RCBind, RCRoot),
-                                             ResolveEff, ResolveGlobalEff,
-                                             addGlobal, getGlobal,
-                                             getUnqualified)
+import           Control.Monad.Freer  (Eff)
+import           Hina.Concrete        (Arg (Arg),
+                                       Expr (EApp, ELam, EPi, EProj, ESigma, ETup, EUniv, EVar),
+                                       ExprApp (ExprApp), ExprLam (ExprLam),
+                                       ExprPi (ExprPi), ExprProj (ExprProj),
+                                       ExprSigma (ExprSigma), ExprTup (ExprTup),
+                                       ExprUniv (ExprUniv), ExprVar (ExprVar),
+                                       Param (Param), Stmt (SVar),
+                                       StmtVar (StmtVar))
+import           Hina.Mapping         (setConcVar)
+import           Hina.Ref             (Name, Ref, RefGlobal (RGVar), freshBind,
+                                       freshVar)
+import           Hina.Resolve.Context (ResolveEff, ResolveGlobalEff, addGlobal,
+                                       getUnqualified, withLocal)
 
 resolveExpr :: ResolveEff m => Expr Name -> Eff m (Expr Ref)
 resolveExpr expr = case expr of
@@ -30,9 +22,8 @@ resolveExpr expr = case expr of
     arg' <- resolveArg arg
     pure $ EApp $ ExprApp fn' arg'
   ELam (ExprLam param body) -> do
-    ctx <- ask
     localRef <- freshBind param
-    local (const $ RCBind $ BindContext ctx param localRef) do
+    withLocal param localRef do
       body' <- resolveExpr body
       pure $ ELam $ ExprLam localRef body'
   EPi (ExprPi param body) ->
@@ -63,25 +54,18 @@ resolveArg (Arg expr) = do
 
 resolveParam :: ResolveEff m => Param Name -> (Param Ref -> Eff m a) -> Eff m a
 resolveParam (Param ref typ) f = do
-  ctx <- ask
   localRef <- freshBind ref
   typ' <- resolveExpr typ
-  let boundCtx = BindContext ctx ref localRef
-  local (const $ RCBind boundCtx) $ f $ Param localRef typ'
+  withLocal ref localRef $ f (Param localRef typ')
 
-preResolveStmt :: ResolveGlobalEff m => Stmt Name -> Eff m ()
-preResolveStmt stmt = case stmt of
-  SVar (StmtVar ref typ body) -> do
-    varRef <- freshVar ref
-    addGlobal ref varRef
-
-resolveStmt :: ResolveGlobalEff m => Stmt Name -> Eff m (Stmt Ref)
+resolveStmt :: ResolveGlobalEff m => Stmt Name -> Eff m (Eff m (Stmt Ref))
 resolveStmt stmt = case stmt of
   SVar (StmtVar ref typ body) -> do
-    ctx <- get
-    typ' <- runReader (RCRoot ctx) $ resolveExpr typ
-    body' <- runReader (RCRoot ctx) $ resolveExpr body
-    varRef <- getGlobal ref
-    let stmt' = StmtVar varRef typ' body'
-    setConcVar varRef stmt'
-    pure $ SVar stmt'
+    varRef <- freshVar ref
+    addGlobal ref (RGVar varRef)
+    pure do
+      typ' <- resolveExpr typ
+      body' <- resolveExpr body
+      let stmt' = StmtVar varRef typ' body'
+      setConcVar varRef stmt'
+      pure $ SVar stmt'

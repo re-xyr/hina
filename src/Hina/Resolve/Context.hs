@@ -1,61 +1,39 @@
 module Hina.Resolve.Context where
 
-import           Control.Monad              (when)
-import           Control.Monad.Freer        (Eff, Members)
-import           Control.Monad.Freer.Error  (Error, throwError)
-import           Control.Monad.Freer.Reader (Reader, ask, runReader)
-import           Control.Monad.Freer.State  (State, get, put)
-import           Control.Monad.Freer.TH     (makeEffect)
-import qualified Data.HashMap.Strict        as Map
-import           Data.Maybe                 (isJust)
-import           Hina.Mapping               (ConcreteMapping)
-import           Hina.Ref                   (FreshEff, Name,
-                                             Ref (RBind, RGlobal), RefBind,
-                                             RefGlobal (RGVar), RefGlobalVar)
+import           Control.Monad             (when)
+import           Control.Monad.Freer       (Eff, Member, Members)
+import           Control.Monad.Freer.Error (Error, throwError)
+import           Control.Monad.Freer.State (State, get, put)
+import qualified Data.HashMap.Strict       as Map
+import           Data.Maybe                (isJust)
+import           Hina.Mapping              (ConcreteMapping)
+import           Hina.Ref                  (FreshEff, Name,
+                                            Ref (RBind, RGlobal), RefBind,
+                                            RefGlobal)
 
-data ResolveContext
-  = RCRoot RootContext
-  | RCBind BindContext
+data ResolveContext = ResolveContext
+  { rcLocals  :: Map.HashMap Name [RefBind]
+  , rcGlobals :: Map.HashMap Name RefGlobal }
 
-data BindContext = BindContext
-  { rcParent   :: ResolveContext
-  , rcBindName :: Name
-  , rcBindRef  :: RefBind }
+type ResolveEff m = (Members '[State ResolveContext, Error ()] m, FreshEff m)
 
-data RootContext = RootContext
-  { rcGlobals :: Map.HashMap Name RefGlobalVar }
+type ResolveGlobalEff m = (Member (State ConcreteMapping) m, ResolveEff m)
 
-type ResolveEff m = (Members '[Reader ResolveContext, Error ()] m, FreshEff m)
-
-type ResolveGlobalEff m = (Members '[State RootContext, State ConcreteMapping, Error ()] m, FreshEff m)
-
-getParent :: ResolveEff m => Eff m (Maybe ResolveContext)
-getParent = do
-  ctx <- ask
-  case ctx of
-    RCBind ctx -> pure $ Just $ rcParent ctx
-    RCRoot ctx -> pure Nothing
-
-getUnqualifiedLocallyMaybe :: ResolveEff m => Name -> Eff m (Maybe Ref)
+getUnqualifiedLocallyMaybe :: ResolveEff m => Name -> Eff m (Maybe RefBind)
 getUnqualifiedLocallyMaybe nm = do
-  ctx <- ask
-  case ctx of
-    RCBind ctx -> if nm == rcBindName ctx
-      then pure $ Just $ RBind $ rcBindRef ctx
-      else pure Nothing
-    RCRoot ctx -> case Map.lookup nm (rcGlobals ctx) of
-      Nothing    -> pure Nothing
-      Just entry -> pure $ Just $ RGlobal $ RGVar entry
+  ctx <- get
+  pure case Map.lookup nm (rcLocals ctx) of
+    Nothing      -> Nothing
+    Just []      -> error "Impossible"
+    Just (x : _) -> Just x
 
 getUnqualifiedMaybe :: ResolveEff m => Name -> Eff m (Maybe Ref)
 getUnqualifiedMaybe nm = do
+  ctx <- get
   refMaybe <- getUnqualifiedLocallyMaybe nm
-  prtMaybe <- getParent
-  case refMaybe of
-    Nothing -> case prtMaybe of
-      Nothing  -> pure Nothing
-      Just prt -> runReader prt $ getUnqualifiedMaybe nm
-    Just ref -> pure $ Just ref
+  pure case refMaybe of
+    Nothing  -> RGlobal <$> Map.lookup nm (rcGlobals ctx)
+    Just ref -> Just $ RBind ref
 
 getUnqualified :: ResolveEff m => Name -> Eff m Ref
 getUnqualified nm = do
@@ -64,13 +42,35 @@ getUnqualified nm = do
     Nothing  -> throwError ()
     Just ref -> pure ref
 
-addGlobal :: ResolveGlobalEff m => Name -> RefGlobalVar -> Eff m ()
+addLocal :: ResolveEff m => Name -> RefBind -> Eff m ()
+addLocal nm ref = do
+  ctx <- get
+  put ctx { rcLocals = Map.alter (\case
+    Nothing -> Just [ref]
+    Just xs -> Just (ref : xs)) nm (rcLocals ctx) }
+
+removeLocal :: ResolveEff m => Name -> Eff m ()
+removeLocal nm = do
+  ctx <- get
+  put ctx { rcLocals = Map.alter (\case
+    Nothing       -> error "Impossible"
+    Just []       -> error "Impossible"
+    Just (_ : xs) -> Just xs) nm (rcLocals ctx) }
+
+withLocal :: ResolveEff m => Name -> RefBind -> Eff m a -> Eff m a
+withLocal nm ref m = do
+  addLocal nm ref
+  res <- m
+  removeLocal nm
+  pure res
+
+addGlobal :: ResolveGlobalEff m => Name -> RefGlobal -> Eff m ()
 addGlobal nm ref = do
   ctx <- get
   when (isJust (Map.lookup nm (rcGlobals ctx))) (throwError ())
   put ctx { rcGlobals = Map.insert nm ref (rcGlobals ctx) }
 
-getGlobal :: ResolveGlobalEff m => Name -> Eff m RefGlobalVar
+getGlobal :: ResolveGlobalEff m => Name -> Eff m RefGlobal
 getGlobal nm = do
   ctx <- get
   pure $ rcGlobals ctx Map.! nm
