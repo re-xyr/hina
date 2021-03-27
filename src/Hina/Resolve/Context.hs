@@ -5,6 +5,7 @@ import           Control.Monad.Freer       (Eff, Member, Members)
 import           Control.Monad.Freer.Error (Error, throwError)
 import           Control.Monad.Freer.State (State, get, put)
 import qualified Data.HashMap.Strict       as Map
+import qualified Data.List.NonEmpty        as NonEmpty
 import           Data.Maybe                (isJust)
 import           Hina.Mapping              (ConcreteMapping)
 import           Hina.Ref                  (FreshEff, Name,
@@ -12,7 +13,7 @@ import           Hina.Ref                  (FreshEff, Name,
                                             RefGlobal)
 
 data ResolveContext = ResolveContext
-  { rcLocals  :: Map.HashMap Name [RefBind]
+  { rcLocals  :: Map.HashMap Name (NonEmpty.NonEmpty RefBind)
   , rcGlobals :: Map.HashMap Name RefGlobal }
 
 type ResolveEff m = (Members '[State ResolveContext, Error ()] m, FreshEff m)
@@ -23,9 +24,8 @@ getUnqualifiedLocallyMaybe :: ResolveEff m => Name -> Eff m (Maybe RefBind)
 getUnqualifiedLocallyMaybe nm = do
   ctx <- get
   pure case Map.lookup nm (rcLocals ctx) of
-    Nothing      -> Nothing
-    Just []      -> error "Impossible"
-    Just (x : _) -> Just x
+    Nothing                -> Nothing
+    Just (x NonEmpty.:| _) -> Just x
 
 getUnqualifiedMaybe :: ResolveEff m => Name -> Eff m (Maybe Ref)
 getUnqualifiedMaybe nm = do
@@ -46,16 +46,16 @@ addLocal :: ResolveEff m => Name -> RefBind -> Eff m ()
 addLocal nm ref = do
   ctx <- get
   put ctx { rcLocals = Map.alter (\case
-    Nothing -> Just [ref]
-    Just xs -> Just (ref : xs)) nm (rcLocals ctx) }
+    Nothing -> Just (ref NonEmpty.:| [])
+    Just xs -> Just (ref `NonEmpty.cons` xs)) nm (rcLocals ctx) }
 
 removeLocal :: ResolveEff m => Name -> Eff m ()
 removeLocal nm = do
   ctx <- get
   put ctx { rcLocals = Map.alter (\case
-    Nothing       -> error "Impossible"
-    Just []       -> error "Impossible"
-    Just (_ : xs) -> Just xs) nm (rcLocals ctx) }
+    Nothing                       -> error "Impossible"
+    Just (_ NonEmpty.:| [])       -> Nothing
+    Just (_ NonEmpty.:| (x : xs)) -> Just $ x NonEmpty.:| xs) nm (rcLocals ctx) }
 
 withLocal :: ResolveEff m => Name -> RefBind -> Eff m a -> Eff m a
 withLocal nm ref m = do
