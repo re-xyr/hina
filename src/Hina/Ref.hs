@@ -7,19 +7,34 @@ import qualified Data.Text                 as T
 data Ref
   = RBind RefBind
   | RGlobal RefGlobal
-  deriving (Show, Ord, Eq)
+  deriving (Eq)
+
+instance Show Ref where
+  show = \case
+    RBind x   -> show x
+    RGlobal x -> show x
 
 type FreshEff m = Member Fresh m
 
 data RefBind = RefBind { rName :: Name, rUid :: Uid }
-  deriving (Show, Ord, Eq)
+  deriving (Eq)
+
+instance Show RefBind where
+  show (RefBind name uid) = T.unpack name ++ "[" ++ show uid ++ "]"
 
 data RefGlobal =
   RGVar RefGlobalVar
-  deriving (Show, Ord, Eq)
+  deriving (Eq)
+
+instance Show RefGlobal where
+  show = \case
+    RGVar x -> show x
 
 data RefGlobalVar = RefGlobalVar { rName :: Name, rUid :: Uid }
-  deriving (Show, Ord, Eq)
+  deriving (Eq)
+
+instance Show RefGlobalVar where
+  show (RefGlobalVar name _) = T.unpack name
 
 type Name = T.Text
 type Uid = Int
