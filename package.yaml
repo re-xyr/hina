@@ -21,7 +21,9 @@ description:         Please see the README on GitHub at <https://github.com/re-x
 dependencies:
 - base >= 4.7 && < 5
 - containers
+- Earley
 - freer-simple
+- parser-combinators
 - text
 - unordered-containers
 
@@ -59,8 +61,14 @@ default-extensions:
   - DataKinds
   - DuplicateRecordFields
   - FlexibleContexts
+  - FlexibleInstances
   - LambdaCase
+  - NamedFieldPuns
   - OverloadedStrings
+  - Rank2Types
+  - RecursiveDo
+  - StandaloneDeriving
   - TypeApplications
   - TypeFamilies
+  - TypeOperators
   
