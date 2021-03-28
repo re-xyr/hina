@@ -1,13 +1,12 @@
 module Hina.Resolve.Context where
 
 import           Control.Monad             (when)
-import           Control.Monad.Freer       (Eff, Member, Members)
+import           Control.Monad.Freer       (Eff, Members)
 import           Control.Monad.Freer.Error (Error, throwError)
 import           Control.Monad.Freer.State (State, get, put)
 import qualified Data.HashMap.Strict       as Map
 import qualified Data.List.NonEmpty        as NonEmpty
 import           Data.Maybe                (isJust)
-import           Hina.Mapping              (ConcreteMapping)
 import           Hina.Ref                  (FreshEff, Name,
                                             Ref (RBind, RGlobal), RefBind,
                                             RefGlobal)
@@ -16,9 +15,12 @@ data ResolveContext = ResolveContext
   { rcLocals  :: Map.HashMap Name (NonEmpty.NonEmpty RefBind)
   , rcGlobals :: Map.HashMap Name RefGlobal }
 
-type ResolveEff m = (Members '[State ResolveContext, Error ()] m, FreshEff m)
+data ResolveError
+  = REUndefined Name
+  | REDuplicate Name
+  deriving (Show, Eq)
 
-type ResolveGlobalEff m = (Member (State ConcreteMapping) m, ResolveEff m)
+type ResolveEff m = (Members '[State ResolveContext, Error ResolveError] m, FreshEff m)
 
 getUnqualifiedLocallyMaybe :: ResolveEff m => Name -> Eff m (Maybe RefBind)
 getUnqualifiedLocallyMaybe nm = do
@@ -39,7 +41,7 @@ getUnqualified :: ResolveEff m => Name -> Eff m Ref
 getUnqualified nm = do
   refMaybe <- getUnqualifiedMaybe nm
   case refMaybe of
-    Nothing  -> throwError ()
+    Nothing  -> throwError $ REUndefined nm
     Just ref -> pure ref
 
 addLocal :: ResolveEff m => Name -> RefBind -> Eff m ()
@@ -64,13 +66,13 @@ withLocal nm ref m = do
   removeLocal nm
   pure res
 
-addGlobal :: ResolveGlobalEff m => Name -> RefGlobal -> Eff m ()
+addGlobal :: ResolveEff m => Name -> RefGlobal -> Eff m ()
 addGlobal nm ref = do
   ctx <- get
-  when (isJust (Map.lookup nm (rcGlobals ctx))) (throwError ())
+  when (isJust (Map.lookup nm (rcGlobals ctx))) (throwError $ REDuplicate nm)
   put ctx { rcGlobals = Map.insert nm ref (rcGlobals ctx) }
 
-getGlobal :: ResolveGlobalEff m => Name -> Eff m RefGlobal
+getGlobal :: ResolveEff m => Name -> Eff m RefGlobal
 getGlobal nm = do
   ctx <- get
   pure $ rcGlobals ctx Map.! nm

@@ -9,11 +9,10 @@ import           Hina.Concrete        (Arg (Arg),
                                        ExprUniv (ExprUniv), ExprVar (ExprVar),
                                        Param (Param), Stmt (SVar),
                                        StmtVar (StmtVar))
-import           Hina.Mapping         (setConcVar)
 import           Hina.Ref             (Name, Ref, RefGlobal (RGVar), freshBind,
                                        freshVar)
-import           Hina.Resolve.Context (ResolveEff, ResolveGlobalEff, addGlobal,
-                                       getUnqualified, withLocal)
+import           Hina.Resolve.Context (ResolveEff, addGlobal, getUnqualified,
+                                       withLocal)
 
 resolveExpr :: ResolveEff m => Expr Name -> Eff m (Expr Ref)
 resolveExpr expr = case expr of
@@ -58,7 +57,7 @@ resolveParam (Param ref typ) f = do
   typ' <- resolveExpr typ
   withLocal ref localRef $ f (Param localRef typ')
 
-resolveStmt :: ResolveGlobalEff m => Stmt Name -> Eff m (Eff m (Stmt Ref))
+resolveStmt :: ResolveEff m => Stmt Name -> Eff m (Eff m (Stmt Ref))
 resolveStmt stmt = case stmt of
   SVar (StmtVar ref typ body) -> do
     varRef <- freshVar ref
@@ -67,5 +66,9 @@ resolveStmt stmt = case stmt of
       typ' <- resolveExpr typ
       body' <- resolveExpr body
       let stmt' = StmtVar varRef typ' body'
-      setConcVar varRef stmt'
       pure $ SVar stmt'
+
+resolveAll :: ResolveEff m => [Stmt Name] -> Eff m [Stmt Ref]
+resolveAll stmts = do
+  preResolved <- traverse resolveStmt stmts
+  sequence preResolved

@@ -1,20 +1,20 @@
 module Hina.Core.Normalize where
 
-import           Control.Monad.Freer        (Eff, Member)
-import           Control.Monad.Freer.Reader (Reader)
-import           Hina.Core                  (Term (TApp, TBind, TCallVar, TLam, TPi, TProj, TSigma, TTup, TUniv),
-                                             TermApp (TermApp),
-                                             TermCallVar (TermCallVar),
-                                             TermLam (TermLam),
-                                             TermProj (TermProj),
-                                             TermTup (TermTup), aTerm, dBody)
-import           Hina.Core.Substitute       (subst)
-import           Hina.Mapping               (CoreMapping, askCoreVar)
+import           Control.Monad.Freer       (Eff, Member)
+import           Control.Monad.Freer.State (State)
+import           Hina.Core                 (Term (TApp, TBind, TCallVar, TLam, TPi, TProj, TSigma, TTup, TUniv),
+                                            TermApp (TermApp),
+                                            TermCallVar (TermCallVar),
+                                            TermLam (TermLam),
+                                            TermProj (TermProj),
+                                            TermTup (TermTup), aTerm, dBody)
+import           Hina.Core.Substitute      (subst)
+import           Hina.Tyck.Context         (CoreMapping, getCoreVar)
 
-normalizeToWhnf :: Member (Reader CoreMapping) m => Term -> Eff m Term
+normalizeToWhnf :: Member (State CoreMapping) m => Term -> Eff m Term
 normalizeToWhnf term = fst <$> normalizeToWhnf' term
 
-normalizeToWhnf' :: Member (Reader CoreMapping) m => Term -> Eff m (Term, Bool)
+normalizeToWhnf' :: Member (State CoreMapping) m => Term -> Eff m (Term, Bool)
 normalizeToWhnf' term = case term of
   TApp (TermApp fn arg) -> case fn of
     TLam (TermLam bind body) -> do
@@ -41,7 +41,7 @@ normalizeToWhnf' term = case term of
   TUniv _ -> pure (term, True)
   TBind _ -> pure (term, True)
   TCallVar (TermCallVar ref) -> do
-    coreVar <- askCoreVar ref
+    coreVar <- getCoreVar ref
     case dBody coreVar of
       Nothing -> pure (term, True)
       Just x  -> pure (x, False)
